@@ -1,0 +1,35 @@
+name: Flyer archive
+
+# Public repo = GitHub Actions are free. Only public flyer prices live here, no app code.
+on:
+  schedule:
+    - cron: "17 13 * * 4"   # Thursday ~8-9 a.m. Toronto, new flyer week
+    - cron: "17 13 * * 1"   # Monday, late flyers
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flyer-archive
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Pull flyers
+        env:
+          POSTAL: ${{ secrets.POSTAL }}
+        run: python3 flyer_archive.py
+      - name: Commit seed
+        run: |
+          git add archive_seed.json.gz
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "flyer archive $(date -u +%F)"
+          git pull --rebase -q
+          git push
